@@ -1,0 +1,210 @@
+---
+title: "DM_projekt"
+author: "Michał Szczypka"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+
+
+```{r cars1}
+
+#Regresja liniowa
+
+```
+
+
+#1. Biblioteki potrzebne do analizy
+
+```{r cars}
+library(Hmisc)
+library(corrplot)
+
+
+```
+#2. Wczytanie danych z pliku 
+
+
+
+```{r pressure}
+data <- read.table("C:/Users/micha/Desktop/semest_letni6/data_mining/zajecia/CaseStudy/CaseStudy_MS/serce.txt", header = FALSE)
+
+
+```
+
+# 3. Obróbka danych - preprocessing
+```{r trzy}
+#Nastepnie musze dokonac usuniecia pierwszej kolumny, ze wzgledu na powtarzajacy sie nr indexu dla danych ( jest on zbedny)
+data <- data[, -which(names(data) == "V1")]
+# Pierwsza kolumna została usunięta, zobaczmy jak wygląda :)
+data
+# Nadanie nazw dla poszczególnych kolumn 
+colnames(data) <- c("age", "sex", "cp", "trestbps", "chol", "fbs", "restecg", "thalach", "exang", "oldpeak", "slope", "ca", "thal", "target")
+
+
+```
+
+# 4. Sprawdzenie danych i analiza rokladu danych 
+
+```{r cztery}
+# Wyświetlenie wczytanych danych
+print(data)
+#wyswietlenie struktury obiektów naszych danych - za pomocą funkcji str
+str(data)
+#Wygenerowanie podstawowych statystyk dla naszych danych 
+summary(data)
+
+#sporządzenie podstawowych wykresów do sprawdzenia, czy dane są poprawne oraz czy nie ma błędów grubych ( nie ma )
+plot(data$trestbps, type="l")
+#Histogram dla wartosci trestbps
+hist(data$trestbps, breaks=8)
+# Wykresy ramka-wąsy
+boxplot(data$trestbps)
+#Macierz korelacji liniowej
+cor_matrix <- cor(data)
+print(cor_matrix)
+# Macierz korelacji nieparametrycznej
+corr_matrix1 <- rcorr(as.matrix(data))
+print(corr_matrix1$r)
+#Wykresy korelacji
+plot(data$age, data$trestbps, main = "Wykres punktowy dla wieku oraz cisnienia krwi", xlab = "wiek", ylab = "cisnienie")
+abline(lm(data$trestbps ~ data$age), col = "red")
+
+#korelacja
+corrplot(cor_matrix)
+cor_matrix
+#Najwieksze korelacje dla wieku i tresbps[0.27935091] oraz cp i target i [0.43379826]
+#Najmniejsze dla slope i oldpeak [-0.57753682]
+
+```
+
+```{r piec}
+#Celem jest analiza danych oraz wybór zmiennych do modelu regresyjnego. Zmienna, którą 
+#chcemy zamodelować to trestbps z danych data.
+#"Trestbps" to skrót od angielskiego terminu "Resting Blood Pressure", który w języku polskim można tłumaczyć jako "Spoczynkowe ciśnienie krwi".
+#Jest to pomiar ciśnienia krwi, który jest wykonywany w spoczynku, gdy osoba nie jest fizycznie aktywna.
+# "RBP" powinno wynosić w 120/80, wybrałem osobiscie ten wariant, ze względu na to iż jestem niezwykle ciekawy, jak wyglada zaleznosc pomiedzy tym parametrem, a wiekiem.
+
+
+
+
+```
+#5. Modele 
+
+```{r piec_a}
+#Wybor celowy
+train<-data[-c(1, 3, 5, 7, 9),]
+test<-data[c(1, 3, 5, 7, 9),]
+
+#Losowy
+sets <- sample(1:nrow(data), 0.9 * nrow(data))
+train2<- data [sets,]
+test2<- data[-sets,]
+#model 1: Regresja liniowa
+m1<-lm(age ~ trestbps, train)
+summary(m1)
+
+
+```
+
+```{r piec_a_wnioski_i_wykresy}
+#Najmniejsza wartość resztek wynosi -25.1604.
+#1Q: Pierwszy kwartyl (25% obserwacji) ma reszty o wartości -6.1604 lub niższej.
+#Median: Mediana reszt wynosi 0.5611, co oznacza, że 50% reszt ma wartość mniejszą lub równą 0.5611.
+#3Q: Trzeci kwartyl (75% obserwacji) ma reszty o wartości 6.3349 lub niższej.
+#Max: Największa wartość resztek wynosi 23.5777.
+#Wartość R-kwadrat wynosi 0.08035, co oznacza, że około 8.035% zmienności zmiennej age jest wyjaśnione przez zmienną trestbps w modelu regresji liniowej.
+#Szacowana wartość wyrazu wolnego wynosi 34.96994. Oznacza to, że dla trestbps równego 0, szacowana wartość średnia age wynosi 34.96994.
+#Residual standard error: W tym przypadku wynosi 8.75, co oznacza, że typowe reszty mają średni błąd standardowy równy 8.75.
+#p-wartość wynosi 6.515e-07. Jest to test statystyczny, który ocenia istotność ogólnego wpływu modelu na zmienność zmiennej zależnej.
+
+#Wykres dla wizualizacji wyników.
+plot(data$age, type="l", col="red")
+lines(m1$fitted.values, type="l", col="blue")
+
+#reszty
+hist(m1$residuals)
+#funkcja, ktora sluzy do wygenerowania wykresu autokorelacji (ACF - Autocorrelation Function) dla danego wektora reszt modelu. 
+acf(m1$residuals)
+#funkcja służy do generowania wykresu cząstkowej autokorelacji (PACF - Partial Autocorrelation Function) dla danego szeregu czasowego lub wektora.
+pacf(m1$residuals)
+
+#generuje wykres rozrzutu (scatter plot) między resztami modelu a wartościami dopasowanymi przez model.
+plot(m1$residuals~m1$fitted.values)
+
+
+
+```
+#Podsumowując, w tym modelu regresji liniowej zmienna trestbps ma statystycznie istotny wpływ na zmienną age. Jednak R-kwadrat wskazuje,
+#że tylko niewielka część zmienności age jest wyjaśniona przez trestbps, co sugeruje, że inne zmienne mogą mieć większy wpływ na age.
+
+#model b - regresja wieloraka
+
+```{r piec_b}
+# Dopasowanie modelu regresji wielorakiej
+train1<-data[-c(1, 3, 5, 7, 9),]
+test1<-data[c(1, 3, 5, 7, 9),]
+
+#Losowy
+sets1 <- sample(1:nrow(data), 0.9 * nrow(data))
+train21<- data [sets,]
+test21<- data[-sets,]
+#model 1: Regresja wieloraka
+model <- lm(data$age ~ data$trestbps + data$thalach, data = train1)
+summary(model)
+
+```
+
+```{r wnioski_piec_b}
+
+#wnioski
+#Intercept wynosi 59.47786. Oznacza to, że dla trestbps i thalach równej 0, przewidywana średnia wartość age wynosi 59.47786.
+#Wartości p dla współczynników (Pr(>|t|)) są bardzo niskie (mniejsze niż 0.001), co oznacza, że współczynniki są statystycznie istotne.
+#Wartość R-kwadrat wynosi 0.227, co oznacza, że około 22.7% zmienności zmiennej age jest wyjaśnione przez zmienne trestbps i thalach w tym modelu regresji wielorakiej.
+#Wykres dla wizualizacji wyników.
+
+```
+
+
+```{r reszta_piec_b}
+
+plot(data$age, type="l", col="red")
+lines(model$fitted.values, type="l", col="blue")
+
+#reszty
+hist(model$residuals)
+#funkcja, ktora sluzy do wygenerowania wykresu autokorelacji (ACF - Autocorrelation Function) dla danego wektora reszt modelu. 
+acf(model$residuals)
+#funkcja służy do generowania wykresu cząstkowej autokorelacji (PACF - Partial Autocorrelation Function) dla danego szeregu czasowego lub wektora.
+pacf(model$residuals)
+
+#generuje wykres rozrzutu (scatter plot) między resztami modelu a wartościami dopasowanymi przez model.
+plot(model$residuals~model$fitted.values)
+#Podsumowując, w analizowanym modelu regresji wielorakiej zmienne trestbps i thalach mają statystycznie istotny wpływ na zmienną age.
+#R-kwadrat wskazuje, że te zmienne wyjaśniają około 22.7% zmienności age. 
+#Zmienna thalach ma ujemny wpływ na age, co sugeruje, że wyższe wartości thalach są związane z niższym age.
+
+```
+
+
+#7 Podsumowanie
+
+```{r podsumowanie}
+
+#Model 2 (data$trestbps + data$thalach) ma wyższy współczynnik determinacji (R^2) i 
+#skorygowany współczynnik determinacji (Adjusted R^2) w porównaniu do Modelu 1 (trestbps). 
+#Oznacza to, że Model 2 lepiej wyjaśnia zmienność zmiennej zależnej age.
+#W obu modelach współczynnik data$trestbps jest istotny statystycznie (p-value < 0.05),
+#co sugeruje, że zmienna ta ma istotny wpływ na zmienną age. 
+#Jednak w Modelu 1 dodatkowo zmienna data$thalach również jest istotna statystycznie.
+#Residual standard error (błąd standardowy reszt) w Modelu 2 (8.012) jest niższy niż w Modelu 1 (8.75), 
+#co wskazuje na lepsze dopasowanie danych do Modelu 2.
+#Statystyka F-statistic dla Modelu 1 jest również wyższa niż dla Modelu 1, a p-value jest bardzo niskie, 
+#co potwierdza istotność statystyczną Modelu 2.
+#Wnioskiem jest to, że Model 2 (data$trestbps + data$thalach) jest lepszym modelem regresji 
+#w porównaniu do Modelu 1 (trestbps).
+#Model 2 uwzględnia obie zmienne data$trestbps i data$thalach, 
+#które mają istotny wpływ na zmienną age, podczas gdy Model 1 uwzględnia tylko zmienną trestbps. 
+
+```
+
